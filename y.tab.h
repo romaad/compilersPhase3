@@ -64,7 +64,8 @@ extern int yydebug;
     LEFT_BRACKET = 274,
     RIGHT_BRACKET = 275,
     LEFT_BRACKET_CURLY = 276,
-    RIGHT_BRACKET_CURLY = 277
+    RIGHT_BRACKET_CURLY = 277,
+    SYSTEM_OUT = 278
   };
 #endif
 /* Tokens.  */
@@ -88,13 +89,14 @@ extern int yydebug;
 #define RIGHT_BRACKET 275
 #define LEFT_BRACKET_CURLY 276
 #define RIGHT_BRACKET_CURLY 277
+#define SYSTEM_OUT 278
 
 /* Value type.  */
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 typedef union YYSTYPE YYSTYPE;
 union YYSTYPE
 {
-#line 14 "syntax.y" /* yacc.c:1909  */
+#line 37 "syntax.y" /* yacc.c:1909  */
 
 	int ival;
 	float fval;
@@ -104,7 +106,7 @@ union YYSTYPE
 	char * ropval;
 	char * bopval;
 
-#line 108 "y.tab.h" /* yacc.c:1909  */
+#line 110 "y.tab.h" /* yacc.c:1909  */
 };
 # define YYSTYPE_IS_TRIVIAL 1
 # define YYSTYPE_IS_DECLARED 1
