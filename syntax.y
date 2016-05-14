@@ -43,7 +43,6 @@ extern int lineCounter;
 
 %% 
 method_body: 
-	{printf("arrived at method body \n");}
 	statement_list
 	;
 statement_list: 
@@ -54,14 +53,14 @@ statement:
 	declaration
 	| if
 	| while
-	| {printf("assignment\n");} assignment
+	| assignment
 	;
 declaration: 
-	{printf("declaration\n");} primitive_type IDENTIFIER SEMI_COLON
+	primitive_type IDENTIFIER SEMI_COLON
 	;
 primitive_type: 
 	INT_WORD 
-	| FLOAT_WORD {printf("lola\n");}
+	| FLOAT_WORD
 	;
 if: 
 	IF_WORD LEFT_BRACKET expression RIGHT_BRACKET LEFT_BRACKET_CURLY statement RIGHT_BRACKET_CURLY ELSE_WORD LEFT_BRACKET_CURLY statement RIGHT_BRACKET_CURLY
