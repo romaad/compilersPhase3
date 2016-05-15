@@ -12,12 +12,17 @@ public class test
 		float zz = 1.1f;
 		x = 6 + y;
 		y = z % b;
-		if ( x == 5 || x == 6){
+		if ( x == 5 || x >= 7 || x <= 7 || x > 7 || x < 7 || x != 7){
 			System.out.println(x);
 		}
 		else
 		{
 			System.out.println(zz);
+		}
+
+		while(x<10)
+		{
+			x++;
 		}
 	}
 

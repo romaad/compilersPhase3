@@ -41,7 +41,7 @@ void printLineNumber(int num)
 
 void cast (string x, int type_t1);
 void arithCast(int from , int to, string op);
-void relaCast(int from , int to, string op);
+void relaCast(string op,char * nTrue, char * nFalse);
 
 bool checkId(string id);
 string getOp(string op);
@@ -67,8 +67,12 @@ string genLabel();
 		char * nFalse;
 	} bexpr_type;
 	struct {
-		char * trueLab, *falseLab;
-	}stmt_type;
+		char * next;
+	} stmt_type;
+	struct {
+		char * next;
+		char * begin;
+	}while_type;
 	int sType;
 }
 
@@ -105,17 +109,34 @@ string genLabel();
 %type <stmt_type> statement
 %type <stmt_type> statement_list
 %type <stmt_type> if
-%type <stmt_type> while
+%type <while_type> while
 
 %% 
 method_body: 
-	{generateHeader();}
+	{	generateHeader();
+		$<stmt_type>$.next = "retL";
+	}
 	statement_list
 	{generateFooter();}
 	;
 statement_list: 
+	{
+		$$.next = $<stmt_type>0.next;
+		$<stmt_type>$.next = $$.next;
+	}
+	 statement 
+	| {
+		$$.next = $<stmt_type>0.next;
+		$<stmt_type>$.next = $$.next;
+	  }
+	  {
+	  	$<stmt_type>$.next = genLabel().c_str(); 	//generate label for statement and assign it to statement list next
+	  }
+	statement_list 
+	{
+		fout<<$2.next<<":"<<endl;	//mark statement with statement list next label
+	}
 	statement 
-	| statement_list statement 
 	;
 statement: 
 	declaration
@@ -143,17 +164,48 @@ primitive_type:
 	|BOOLEAN_WORD {$$ = BOOL_T;}
 	;
 if: 
+	{
+		$4.nTrue = genLabel().c_str;
+		$4.nFalse = genLabel().c_str;
+		$8.next = $$.next;
+		$14.next = $$next;
+	}
 	IF_WORD LEFT_BRACKET 
 	b_expression 
 	RIGHT_BRACKET LEFT_BRACKET_CURLY 
+	{
+		fout<<$4.nTrue<<":"<<endl;
+	}
 	statement 
+	{
+		fout<<"goto "<<$$.next<<endl;
+	}
 	RIGHT_BRACKET_CURLY 
 	ELSE_WORD LEFT_BRACKET_CURLY 
+	{
+		fout<<$4.nFalse<<":"<<endl;
+	}
 	statement 
 	RIGHT_BRACKET_CURLY
 	;
 while: 
-	WHILE_WORD LEFT_BRACKET b_expression RIGHT_BRACKET LEFT_BRACKET_CURLY statement RIGHT_BRACKET_CURLY
+	WHILE_WORD LEFT_BRACKET
+	{
+		$$.begin = genLabel().c_str();
+		$4.true = genLabel().c_str();
+		$4.false = $$.next;
+		$7.next = $$.next;
+	}
+	b_expression
+	RIGHT_BRACKET LEFT_BRACKET_CURLY 
+	{
+		fout<<$4.true<<":"<<endl;
+	}
+	statement 
+	RIGHT_BRACKET_CURLY
+	{
+		fout<<"goto "<<$$.begin();
+	}
 	;
 assignment: 
 	IDENTIFIER EQUALS expression SEMI_COLON
@@ -255,10 +307,11 @@ system_print:
 	}
 	b_expression 
 	BOOL_OP 
-	{fout<<$<idval>$<<endl;}
+	{fout<<$<idval>$<<":"<<endl;}
 	b_expression	
-	| expression RELA_OP expression		{relaCast($1.sType,$3.sType,string($2));}
-
+	| expression RELA_OP expression		
+	{relaCast(string($2),$$.nTrue,$$.nFalse);}
+	;
 %%
 
 
@@ -321,6 +374,7 @@ void generateHeader()
 
 void generateFooter()
 {
+	fout<<"retL:"<<endl;
 	fout<<"return"<<endl;
 	fout<<".end method"<<endl;
 }
@@ -349,22 +403,10 @@ void arithCast(int from , int to, string op)
 }
 
 /*"=="|"!="|">"|">="|"<"|"<="*/
-void relaCast(int from , int to, string op)
+void relaCast(string op,char * nTrue, char * nFalse)
 {
-	if(from == to)
-	{
-		if(from == INT_T)
-		{
-
-		}else if (from == FLOAT_T)
-		{
-
-		}
-	}
-	else
-	{
-		yyerror("cast not implemented yet");
-	}
+	fout << getOp(op)<< " "<<nTrue<<endl;
+	fout << "goto "<<nFalse;
 }
 string getOp(string op)
 {
@@ -402,5 +444,5 @@ void defineVar(string name, int type)
 
 string genLabel()
 {
-	return "#_"+to_string(labelsCount++)+":";
+	return "#_"+to_string(labelsCount++);
 }

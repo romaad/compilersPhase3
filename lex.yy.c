@@ -849,12 +849,12 @@ YY_RULE_SETUP
 case 12:
 YY_RULE_SETUP
 #line 32 "lex.l"
-{yylval.ropval = strdup(yytext); return RELA_OP;}
+{yylval.aopval = strdup(yytext); return RELA_OP;}
 	YY_BREAK
 case 13:
 YY_RULE_SETUP
 #line 33 "lex.l"
-{yylval.bopval = strdup(yytext); return BOOL_OP;}
+{yylval.aopval = strdup(yytext); return BOOL_OP;}
 	YY_BREAK
 case 14:
 YY_RULE_SETUP

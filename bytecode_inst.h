@@ -14,6 +14,14 @@ map<string,string> inst_list = {
 	{"|", "or"},
 	{"&", "and"},
 	{"%", "rem"},
+
+	/* relational op */
+	{"==", "ifcmpeq"},
+	{"<=", "ifcmple"},
+	{">=", "ifcmpge"},
+	{"!=", "ifcmpne"},
+	{">",  "ifcmpgt"},
+	{"<",  "ifcmplt"}
 };
 
 #endif
