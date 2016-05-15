@@ -14,8 +14,8 @@ id {letter}({letter}|{digit})*
 num {digits}
 fnum {digits}.{digits}("E"{digits}+)?
 relop "=="|"!="|">"|">="|"<"|"<="
-boolop "&&"|"&"|"||"|"|"
-op "+"|"-"|"*"|"/"|"%"
+boolop "&&"|"||"
+op "+"|"-"|"*"|"/"|"%"|"&"|"|"
 binary "true"|"false"
 %%
 "System.out.println"	{return SYSTEM_OUT;}
@@ -23,22 +23,22 @@ binary "true"|"false"
 "else"	{return ELSE_WORD;}
 "while"	{return WHILE_WORD;}
 "for"	{return FOR_WORD;}
-"int"	{printf("int\n");return INT_WORD;}
-"float"	{printf("float\n");return FLOAT_WORD;}
+"int"	{return INT_WORD;}
+"float"	{return FLOAT_WORD;}
 "boolean" {return BOOLEAN_WORD;}
-{num}	{printf("num\n");yylval.ival = atoi(yytext); return INT;}
-{fnum}	{printf("floa numt\n");yylval.fval = atof(yytext); return FLOAT;}
-{op}	{printf("op");yylval.aopval = strdup(yytext); return ARITH_OP;}
-{relop} {printf("relop\n");yylval.ropval = strdup(yytext); return RELA_OP;}
-{boolop} {printf("boolop\n");yylval.bopval = strdup(yytext); return BOOL_OP;}
-{binary} {printf("binary\n");if(!strcmp(yytext,"true")){ yylval.bval = 1;} else { yylval.bval = 0;} return BOOL;}
-{id}	{printf("id\n");yylval.idval = strdup(yytext);return IDENTIFIER;}
-";" {printf("semi col\n"); return SEMI_COLON;}
+{num}	{yylval.ival = atoi(yytext); return INT;}
+{fnum}	{yylval.fval = atof(yytext); return FLOAT;}
+{op}	{yylval.aopval = strdup(yytext); return ARITH_OP;}
+{relop} {yylval.aopval = strdup(yytext); return RELA_OP;}
+{boolop} {yylval.aopval = strdup(yytext); return BOOL_OP;}
+{binary} {if(!strcmp(yytext,"true")){ yylval.bval = 1;} else { yylval.bval = 0;} return BOOL;}
+{id}	{yylval.idval = strdup(yytext);return IDENTIFIER;}
+";" { return SEMI_COLON;}
 "=" {return EQUALS;}
 "(" { return LEFT_BRACKET;}
 ")" {return RIGHT_BRACKET;}
 "{" {return LEFT_BRACKET_CURLY;}
-"}" {printf("rightCurly\n");return RIGHT_BRACKET_CURLY;}
+"}" {return RIGHT_BRACKET_CURLY;}
 \n	{++lineCounter;	printLineNumber(lineCounter);}
 %%
 

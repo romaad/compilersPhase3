@@ -70,6 +70,9 @@
 
 #include <stdio.h>
 #include <unistd.h>
+
+#include "bytecode_inst.h"
+
 #define GetCurrentDir getcwd
 
 using namespace std;
@@ -82,21 +85,38 @@ extern int lineCounter;
 
 #define TRUE 1
 #define FALSE 0
-
+string outfileName ;
 
 ofstream fout("output.j");	/* file for writing output */
 void generateHeader(void);	/* generate useless header for class to be able to compile the code*/
 void generateFooter(void);	/* generate useless header for class to be able to compile the code*/
 
-int varaiblesNum = 2; 	/* new variable will be issued this number, java starts with 2 */
+int varaiblesNum = 1; 	/* new variable will be issued this number, java starts with 1, 0 is 'this' */
+int labelsCount = 0;	/* to generate labels */
+
+typedef enum {INT_T, FLOAT_T, BOOL_T, VOID_T, ERROR_T} type_enum;
+
+map<string, pair<int,type_enum> > symbTab;
+
 
 void printLineNumber(int num)
 {
 	fout<<".line "<<num<<endl;
 }
 
+void cast (string x, int type_t1);
+void arithCast(int from , int to, string op);
+void boolCast(string op);
+void relaCast(int from , int to, string op);
 
-#line 100 "y.tab.c" /* yacc.c:339  */
+bool checkId(string id);
+string getOp(string op);
+void defineVar(string name, int type);
+
+string genLabel();
+
+
+#line 120 "y.tab.c" /* yacc.c:339  */
 
 # ifndef YY_NULLPTR
 #  if defined __cplusplus && 201103L <= __cplusplus
@@ -182,7 +202,7 @@ extern int yydebug;
 typedef union YYSTYPE YYSTYPE;
 union YYSTYPE
 {
-#line 37 "syntax.y" /* yacc.c:355  */
+#line 57 "syntax.y" /* yacc.c:355  */
 
 	int ival;
 	float fval;
@@ -191,8 +211,20 @@ union YYSTYPE
 	char * aopval;
 	char * ropval;
 	char * bopval;
+	struct {
+		int sType;
+	} expr_type;
+	struct {
+		char * ntrue;
+		char * nFalse;
+		char * next;
+	} bexpr_type;
+	struct {
+		char * trueLab, *falseLab;
+	}stmt_type;
+	int sType;
 
-#line 196 "y.tab.c" /* yacc.c:355  */
+#line 228 "y.tab.c" /* yacc.c:355  */
 };
 # define YYSTYPE_IS_TRIVIAL 1
 # define YYSTYPE_IS_DECLARED 1
@@ -207,7 +239,7 @@ int yyparse (void);
 
 /* Copy the second part of user declarations.  */
 
-#line 211 "y.tab.c" /* yacc.c:358  */
+#line 243 "y.tab.c" /* yacc.c:358  */
 
 #ifdef short
 # undef short
@@ -449,16 +481,16 @@ union yyalloc
 /* YYFINAL -- State number of the termination state.  */
 #define YYFINAL  3
 /* YYLAST -- Last index in YYTABLE.  */
-#define YYLAST   63
+#define YYLAST   57
 
 /* YYNTOKENS -- Number of terminals.  */
 #define YYNTOKENS  24
 /* YYNNTS -- Number of nonterminals.  */
-#define YYNNTS  12
+#define YYNNTS  13
 /* YYNRULES -- Number of rules.  */
-#define YYNRULES  25
+#define YYNRULES  26
 /* YYNSTATES -- Number of states.  */
-#define YYNSTATES  57
+#define YYNSTATES  59
 
 /* YYTRANSLATE[YYX] -- Symbol number corresponding to YYX as returned
    by yylex, with out-of-bounds checking.  */
@@ -506,9 +538,9 @@ static const yytype_uint8 yytranslate[] =
   /* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
 static const yytype_uint8 yyrline[] =
 {
-       0,    76,    76,    76,    81,    82,    85,    86,    87,    88,
-      89,    92,    95,    96,    99,   102,   105,   108,   109,   110,
-     111,   112,   113,   114,   115,   118
+       0,   116,   116,   116,   121,   122,   125,   126,   127,   128,
+     129,   132,   145,   146,   147,   150,   160,   163,   191,   192,
+     193,   194,   214,   217,   241,   242,   243
 };
 #endif
 
@@ -523,7 +555,7 @@ static const char *const yytname[] =
   "EQUALS", "LEFT_BRACKET", "RIGHT_BRACKET", "LEFT_BRACKET_CURLY",
   "RIGHT_BRACKET_CURLY", "SYSTEM_OUT", "$accept", "method_body", "$@1",
   "statement_list", "statement", "declaration", "primitive_type", "if",
-  "while", "assignment", "expression", "system_print", YY_NULLPTR
+  "while", "assignment", "expression", "system_print", "b_expression", YY_NULLPTR
 };
 #endif
 
@@ -552,12 +584,12 @@ static const yytype_uint16 yytoknum[] =
      STATE-NUM.  */
 static const yytype_int8 yypact[] =
 {
-     -19,     4,    -1,   -19,   -12,   -11,    -7,   -19,   -19,    -4,
-      -1,   -19,   -19,     1,   -19,   -19,   -19,   -19,    20,    20,
-      20,    20,   -19,     3,   -19,   -19,   -19,   -19,    20,    46,
-      21,    25,    39,   -19,    42,    20,    20,    20,   -19,    -5,
-       0,    10,   -19,    49,    49,    49,    -1,    -1,   -19,     9,
-      13,    27,   -19,    19,    -1,    30,   -19
+     -19,     2,    -3,   -19,   -12,     8,    12,   -19,   -19,   -19,
+      14,    -3,   -19,   -19,    36,   -19,   -19,   -19,   -19,    22,
+      11,    11,    22,   -19,    -9,   -19,   -19,   -19,    22,    27,
+     -19,    32,     9,    23,    15,   -19,    16,    22,   -19,    22,
+      11,    25,    26,    31,   -19,    42,    42,    41,    -3,    -3,
+     -19,    29,    30,    43,   -19,    34,    -3,    35,   -19
 };
 
   /* YYDEFACT[STATE-NUM] -- Default reduction number in state STATE-NUM.
@@ -565,26 +597,26 @@ static const yytype_int8 yypact[] =
      means the default is an error.  */
 static const yytype_uint8 yydefact[] =
 {
-       2,     0,     0,     1,     0,     0,     0,    12,    13,     0,
-       3,     4,     6,     0,     7,     8,     9,    10,     0,     0,
-       0,     0,     5,     0,    18,    17,    19,    23,     0,     0,
-       0,     0,     0,    11,     0,     0,     0,     0,    16,     0,
-       0,     0,    24,    20,    22,    21,     0,     0,    25,     0,
-       0,     0,    15,     0,     0,     0,    14
+       2,     0,     0,     1,     0,     0,     0,    12,    13,    14,
+       0,     3,     4,     6,     0,     7,     8,     9,    10,     0,
+       0,     0,     0,     5,     0,    19,    18,    21,     0,     0,
+      24,     0,     0,     0,     0,    11,     0,     0,    17,     0,
+       0,     0,     0,     0,    22,    20,    26,    25,     0,     0,
+      23,     0,     0,     0,    16,     0,     0,     0,    15
 };
 
   /* YYPGOTO[NTERM-NUM].  */
 static const yytype_int8 yypgoto[] =
 {
-     -19,   -19,   -19,   -19,   -10,   -19,   -19,   -19,   -19,   -19,
-     -18,   -19
+     -19,   -19,   -19,   -19,   -11,   -19,   -19,   -19,   -19,   -19,
+     -18,   -19,   -16
 };
 
   /* YYDEFGOTO[NTERM-NUM].  */
 static const yytype_int8 yydefgoto[] =
 {
-      -1,     1,     2,    10,    11,    12,    13,    14,    15,    16,
-      29,    17
+      -1,     1,     2,    11,    12,    13,    14,    15,    16,    17,
+      31,    18,    32
 };
 
   /* YYTABLE[YYPACT[STATE-NUM]] -- What to do in state STATE-NUM.  If
@@ -592,52 +624,50 @@ static const yytype_int8 yydefgoto[] =
      number is the opposite.  If YYTABLE_NINF, syntax error.  */
 static const yytype_uint8 yytable[] =
 {
-      22,    30,    31,    32,     3,     4,    18,    23,    19,     5,
-      34,     6,    20,     7,     8,    21,    46,    43,    44,    45,
-      33,    47,     9,    24,    25,    26,    27,    48,    35,    36,
-      37,    51,    35,    36,    37,    52,    49,    50,    53,    28,
-      54,    39,     0,     0,    55,    40,    35,    36,    37,    35,
-      36,    37,    56,    35,    36,    37,    35,    36,    37,    41,
-       0,     0,    42,    38
+      23,    29,     3,     4,    34,    33,    19,     5,    35,     6,
+      36,     7,     8,     9,    25,    26,    30,    27,    40,    45,
+      10,    46,    37,    37,    47,    25,    26,    20,    27,    41,
+      28,    21,    40,    22,    37,    43,    44,    51,    52,    37,
+      39,    28,    24,    42,    38,    57,    48,    49,    50,    37,
+      40,    53,    54,     0,    55,    56,     0,    58
 };
 
 static const yytype_int8 yycheck[] =
 {
-      10,    19,    20,    21,     0,     6,    18,     6,    19,    10,
-      28,    12,    19,    14,    15,    19,    21,    35,    36,    37,
-      17,    21,    23,     3,     4,     5,     6,    17,     7,     8,
-       9,    22,     7,     8,     9,    22,    46,    47,    11,    19,
-      21,    20,    -1,    -1,    54,    20,     7,     8,     9,     7,
-       8,     9,    22,     7,     8,     9,     7,     8,     9,    20,
-      -1,    -1,    20,    17
+      11,    19,     0,     6,    22,    21,    18,    10,    17,    12,
+      28,    14,    15,    16,     3,     4,     5,     6,     9,    37,
+      23,    39,     7,     7,    40,     3,     4,    19,     6,    20,
+      19,    19,     9,    19,     7,    20,    20,    48,    49,     7,
+       8,    19,     6,    20,    17,    56,    21,    21,    17,     7,
+       9,    22,    22,    -1,    11,    21,    -1,    22
 };
 
   /* YYSTOS[STATE-NUM] -- The (internal number of the) accessing
      symbol of state STATE-NUM.  */
 static const yytype_uint8 yystos[] =
 {
-       0,    25,    26,     0,     6,    10,    12,    14,    15,    23,
-      27,    28,    29,    30,    31,    32,    33,    35,    18,    19,
-      19,    19,    28,     6,     3,     4,     5,     6,    19,    34,
-      34,    34,    34,    17,    34,     7,     8,     9,    17,    20,
-      20,    20,    20,    34,    34,    34,    21,    21,    17,    28,
-      28,    22,    22,    11,    21,    28,    22
+       0,    25,    26,     0,     6,    10,    12,    14,    15,    16,
+      23,    27,    28,    29,    30,    31,    32,    33,    35,    18,
+      19,    19,    19,    28,     6,     3,     4,     6,    19,    34,
+       5,    34,    36,    36,    34,    17,    34,     7,    17,     8,
+       9,    20,    20,    20,    20,    34,    34,    36,    21,    21,
+      17,    28,    28,    22,    22,    11,    21,    28,    22
 };
 
   /* YYR1[YYN] -- Symbol number of symbol that rule YYN derives.  */
 static const yytype_uint8 yyr1[] =
 {
        0,    24,    26,    25,    27,    27,    28,    28,    28,    28,
-      28,    29,    30,    30,    31,    32,    33,    34,    34,    34,
-      34,    34,    34,    34,    34,    35
+      28,    29,    30,    30,    30,    31,    32,    33,    34,    34,
+      34,    34,    34,    35,    36,    36,    36
 };
 
   /* YYR2[YYN] -- Number of symbols on the right hand side of rule YYN.  */
 static const yytype_uint8 yyr2[] =
 {
        0,     2,     0,     2,     1,     2,     1,     1,     1,     1,
-       1,     3,     1,     1,    11,     7,     4,     1,     1,     1,
-       3,     3,     3,     1,     3,     5
+       1,     3,     1,     1,     1,    11,     7,     4,     1,     1,
+       3,     1,     3,     5,     1,     3,     3
 };
 
 
@@ -1314,31 +1344,175 @@ yyreduce:
   switch (yyn)
     {
         case 2:
-#line 76 "syntax.y" /* yacc.c:1646  */
+#line 116 "syntax.y" /* yacc.c:1646  */
     {generateHeader();}
-#line 1320 "y.tab.c" /* yacc.c:1646  */
+#line 1350 "y.tab.c" /* yacc.c:1646  */
     break;
 
   case 3:
-#line 78 "syntax.y" /* yacc.c:1646  */
+#line 118 "syntax.y" /* yacc.c:1646  */
     {generateFooter();}
-#line 1326 "y.tab.c" /* yacc.c:1646  */
+#line 1356 "y.tab.c" /* yacc.c:1646  */
     break;
 
-  case 5:
-#line 82 "syntax.y" /* yacc.c:1646  */
-    {cout<<" arrived here"<<endl;}
-#line 1332 "y.tab.c" /* yacc.c:1646  */
+  case 11:
+#line 133 "syntax.y" /* yacc.c:1646  */
+    {
+		string str((yyvsp[-1].idval));
+		if((yyvsp[-2].sType) == INT_T)
+		{
+			defineVar(str,INT_T);
+		}else if ((yyvsp[-2].sType) == FLOAT_T)
+		{
+			defineVar(str,FLOAT_T);
+		}
+	}
+#line 1371 "y.tab.c" /* yacc.c:1646  */
     break;
 
-  case 9:
-#line 88 "syntax.y" /* yacc.c:1646  */
-    {cout<<"assign"<<endl;}
-#line 1338 "y.tab.c" /* yacc.c:1646  */
+  case 12:
+#line 145 "syntax.y" /* yacc.c:1646  */
+    {(yyval.sType) = INT_T;}
+#line 1377 "y.tab.c" /* yacc.c:1646  */
+    break;
+
+  case 13:
+#line 146 "syntax.y" /* yacc.c:1646  */
+    {(yyval.sType) = FLOAT_T;}
+#line 1383 "y.tab.c" /* yacc.c:1646  */
+    break;
+
+  case 14:
+#line 147 "syntax.y" /* yacc.c:1646  */
+    {(yyval.sType) = BOOL_T;}
+#line 1389 "y.tab.c" /* yacc.c:1646  */
+    break;
+
+  case 17:
+#line 164 "syntax.y" /* yacc.c:1646  */
+    {
+		string str((yyvsp[-3].idval));
+		/* after expression finishes, its result should be on top of stack. 
+		we just store the top of stack to the identifier*/
+		if(checkId(str))
+		{
+			if((yyvsp[-1].expr_type).sType == symbTab[str].second)
+			{
+				if((yyvsp[-1].expr_type).sType == INT_T)
+				{
+					fout<<"istore "<<symbTab[str].first<<endl;
+				}else if ((yyvsp[-1].expr_type).sType == FLOAT_T)
+				{
+					fout<<"fstore "<<symbTab[str].first<<endl;
+				}
+			}
+			else
+			{
+				cast(str,(yyvsp[-1].expr_type).sType);	/* do casting */
+			}
+		}else{
+			string err = "identifier: "+str+" isn't declared in this scope";
+			yyerror(err.c_str());
+		}
+	}
+#line 1419 "y.tab.c" /* yacc.c:1646  */
+    break;
+
+  case 18:
+#line 191 "syntax.y" /* yacc.c:1646  */
+    {(yyval.expr_type).sType = FLOAT_T; fout<<"ldc "<<(yyvsp[0].fval)<<endl;}
+#line 1425 "y.tab.c" /* yacc.c:1646  */
+    break;
+
+  case 19:
+#line 192 "syntax.y" /* yacc.c:1646  */
+    {(yyval.expr_type).sType = INT_T;  fout<<"ldc "<<(yyvsp[0].ival)<<endl;}
+#line 1431 "y.tab.c" /* yacc.c:1646  */
+    break;
+
+  case 20:
+#line 193 "syntax.y" /* yacc.c:1646  */
+    {arithCast((yyvsp[-2].expr_type).sType, (yyvsp[0].expr_type).sType, string((yyvsp[-1].aopval)));}
+#line 1437 "y.tab.c" /* yacc.c:1646  */
+    break;
+
+  case 21:
+#line 194 "syntax.y" /* yacc.c:1646  */
+    {
+		string str((yyvsp[0].idval));
+		if(checkId(str))
+		{
+			(yyval.expr_type).sType = symbTab[str].second;
+			if(symbTab[str].second == INT_T)
+			{
+				fout<<"iload "<<symbTab[str].first<<endl;
+			}else if (symbTab[str].second == FLOAT_T)
+			{
+				fout<<"fload "<<symbTab[str].first<<endl;
+			}
+		}
+		else
+		{
+			string err = "identifier: "+str+" isn't declared in this scope";
+			yyerror(err.c_str());
+			(yyval.expr_type).sType = ERROR_T;
+		}
+	}
+#line 1462 "y.tab.c" /* yacc.c:1646  */
+    break;
+
+  case 22:
+#line 214 "syntax.y" /* yacc.c:1646  */
+    {(yyval.expr_type).sType = (yyvsp[-1].expr_type).sType;}
+#line 1468 "y.tab.c" /* yacc.c:1646  */
+    break;
+
+  case 23:
+#line 218 "syntax.y" /* yacc.c:1646  */
+    {
+		if((yyvsp[-2].expr_type).sType == INT_T)
+		{
+			/* expression is at top of stack now */
+			fout<<"istore "<< symbTab["1syso_int_var"].first << endl;
+			/* save it at the predefined temp syso var */
+			fout<<"getstatic      java/lang/System/out Ljava/io/PrintStream;";
+			/* call syso */
+			fout<<"iload "<< symbTab["1syso_int_var"].first << endl;
+			/*insert param*/
+			fout<<"invokevirtual java/io/PrintStream/println(I)V"<<endl;
+			/*invoke syso*/
+
+		}else if ((yyvsp[-2].expr_type).sType == FLOAT_T)
+		{
+			fout<<"fstore "<< symbTab["1syso_float_var"].first << endl;
+			fout<<"getstatic      java/lang/System/out Ljava/io/PrintStream;";
+			fout<<"iload "<< symbTab["1syso_int_var"].first << endl;
+			fout<<"invokevirtual java/io/PrintStream/println(F)V"<<endl;
+		}
+	}
+#line 1494 "y.tab.c" /* yacc.c:1646  */
+    break;
+
+  case 24:
+#line 241 "syntax.y" /* yacc.c:1646  */
+    {(yyval.bexpr_type).sType = BOOL_T; fout<<"ldc "<<(yyvsp[0].bval)<<endl;}
+#line 1500 "y.tab.c" /* yacc.c:1646  */
+    break;
+
+  case 25:
+#line 242 "syntax.y" /* yacc.c:1646  */
+    {boolCast(string((yyvsp[-1].aopval)));}
+#line 1506 "y.tab.c" /* yacc.c:1646  */
+    break;
+
+  case 26:
+#line 243 "syntax.y" /* yacc.c:1646  */
+    {relaCast((yyvsp[-2].expr_type).sType,(yyvsp[0].expr_type).sType,string((yyvsp[-1].aopval)));}
+#line 1512 "y.tab.c" /* yacc.c:1646  */
     break;
 
 
-#line 1342 "y.tab.c" /* yacc.c:1646  */
+#line 1516 "y.tab.c" /* yacc.c:1646  */
       default: break;
     }
   /* User semantic actions sometimes alter yychar, and that requires
@@ -1566,12 +1740,22 @@ yyreturn:
 #endif
   return yyresult;
 }
-#line 119 "syntax.y" /* yacc.c:1906  */
+#line 245 "syntax.y" /* yacc.c:1906  */
 
 
-main ()
+main (int argv, char * argc[])
 {
-	FILE *myfile = fopen("input_code.txt", "r");
+	FILE *myfile;
+	if(argv > 1) 
+	{
+		myfile = fopen("input_code.txt", "r");
+		outfileName = "input_code.txt";
+	}
+	else 
+	{
+		myfile = fopen(argc[2], "r");
+		outfileName = string(argc[2]);
+	}
 	if (!myfile) {
 		printf("I can't open input code file!\n");
 		char cCurrentPath[200];
@@ -1597,11 +1781,108 @@ void yyerror(const char * s)
 
 void generateHeader()
 {
-	fout<<".class test\n.super java/lang/Object"<<endl; //code for defining class
+	fout<<".source "<<outfileName<<endl;
+	fout<<".class public test\n.super java/lang/Object"<<endl<<endl; //code for defining class
+	fout<<".method public <init>()V"<<endl<<"aload_0"<<endl<<"invokenonvirtual java/lang/Object/<init>()V"<<endl<<"return"<<endl<<".end method"<<endl<<endl;
 	fout<<".method public static main([java/lang/String)V"<<endl;
+	fout<<".limit locals 100\n.limit stack 100"<<endl;
+
+	/* generate temporal vars for syso*/
+	defineVar("1syso_int_var",INT_T);
+	defineVar("1syso_float_var",FLOAT_T);
+
+	/*generate line*/
+	fout<<".line 1"<<endl;
 }
 
 void generateFooter()
 {
+	fout<<"return"<<endl;
 	fout<<".end method"<<endl;
+}
+
+void cast (string str, int t1)
+{
+	yyerror("casting not implemented yet :)");
+}
+
+void arithCast(int from , int to, string op)
+{
+	if(from == to)
+	{
+		if(from == INT_T)
+		{
+			fout<<"i"<<getOp(op)<<endl;
+		}else if (from == FLOAT_T)
+		{
+			fout<<"f"<<getOp(op)<<endl;
+		}
+	}
+	else
+	{
+		yyerror("cast not implemented yet");
+	}
+}
+
+/* "&&","||"*/
+void boolCast(string op)
+{
+	
+}
+
+/*"=="|"!="|">"|">="|"<"|"<="*/
+void relaCast(int from , int to, string op)
+{
+	if(from == to)
+	{
+		if(from == INT_T)
+		{
+
+		}else if (from == FLOAT_T)
+		{
+
+		}
+	}
+	else
+	{
+		yyerror("cast not implemented yet");
+	}
+}
+string getOp(string op)
+{
+	if(inst_list.find(op) != inst_list.end())
+	{
+		return inst_list[op];
+	}
+	return "";
+}
+
+bool checkId(string op)
+{
+	return (symbTab.find(op) != symbTab.end());
+}
+
+void defineVar(string name, int type)
+{
+	if(checkId(name))
+	{
+		string err = "variable: "+name+" declared before";
+		yyerror(err.c_str());
+	}else
+	{
+		if(type == INT_T)
+		{
+			fout<<"iconst_0\nistore "<<varaiblesNum<<endl;
+		}
+		else if ( type == FLOAT_T)
+		{
+			fout<<"fconst_0\nfstore "<<varaiblesNum<<endl;	
+		}
+		symbTab[name] = make_pair(varaiblesNum++,(type_enum)type);
+	}
+}
+
+string genLabel()
+{
+	return "#_"+to_string(labelsCount++);
 }

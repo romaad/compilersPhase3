@@ -96,7 +96,7 @@ extern int yydebug;
 typedef union YYSTYPE YYSTYPE;
 union YYSTYPE
 {
-#line 37 "syntax.y" /* yacc.c:1909  */
+#line 57 "syntax.y" /* yacc.c:1909  */
 
 	int ival;
 	float fval;
@@ -105,8 +105,20 @@ union YYSTYPE
 	char * aopval;
 	char * ropval;
 	char * bopval;
+	struct {
+		int sType;
+	} expr_type;
+	struct {
+		char * ntrue;
+		char * nFalse;
+		char * next;
+	} bexpr_type;
+	struct {
+		char * trueLab, *falseLab;
+	}stmt_type;
+	int sType;
 
-#line 110 "y.tab.h" /* yacc.c:1909  */
+#line 122 "y.tab.h" /* yacc.c:1909  */
 };
 # define YYSTYPE_IS_TRIVIAL 1
 # define YYSTYPE_IS_DECLARED 1

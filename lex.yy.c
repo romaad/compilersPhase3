@@ -379,9 +379,9 @@ struct yy_trans_info
 	};
 static yyconst flex_int16_t yy_accept[84] =
     {   0,
-        0,    0,   24,   23,   22,   23,   11,   13,   18,   19,
+        0,    0,   24,   23,   22,   23,   11,   11,   18,   19,
         9,   16,   12,   17,   12,   15,   15,   15,   15,   15,
-       15,   15,   15,   20,   13,   21,   12,   13,    0,    9,
+       15,   15,   15,   20,   11,   21,   12,   13,    0,    9,
        15,   15,   15,   15,   15,   15,   15,    2,   15,   15,
        15,   10,    9,   15,   15,   15,   15,   15,    5,    6,
        15,   15,    0,    0,   15,   15,    3,   15,   15,   14,
@@ -819,12 +819,12 @@ YY_RULE_SETUP
 case 6:
 YY_RULE_SETUP
 #line 26 "lex.l"
-{printf("int\n");return INT_WORD;}
+{return INT_WORD;}
 	YY_BREAK
 case 7:
 YY_RULE_SETUP
 #line 27 "lex.l"
-{printf("float\n");return FLOAT_WORD;}
+{return FLOAT_WORD;}
 	YY_BREAK
 case 8:
 YY_RULE_SETUP
@@ -834,42 +834,42 @@ YY_RULE_SETUP
 case 9:
 YY_RULE_SETUP
 #line 29 "lex.l"
-{printf("num\n");yylval.ival = atoi(yytext); return INT;}
+{yylval.ival = atoi(yytext); return INT;}
 	YY_BREAK
 case 10:
 YY_RULE_SETUP
 #line 30 "lex.l"
-{printf("floa numt\n");yylval.fval = atof(yytext); return FLOAT;}
+{yylval.fval = atof(yytext); return FLOAT;}
 	YY_BREAK
 case 11:
 YY_RULE_SETUP
 #line 31 "lex.l"
-{printf("op");yylval.aopval = strdup(yytext); return ARITH_OP;}
+{yylval.aopval = strdup(yytext); return ARITH_OP;}
 	YY_BREAK
 case 12:
 YY_RULE_SETUP
 #line 32 "lex.l"
-{printf("relop\n");yylval.ropval = strdup(yytext); return RELA_OP;}
+{yylval.ropval = strdup(yytext); return RELA_OP;}
 	YY_BREAK
 case 13:
 YY_RULE_SETUP
 #line 33 "lex.l"
-{printf("boolop\n");yylval.bopval = strdup(yytext); return BOOL_OP;}
+{yylval.bopval = strdup(yytext); return BOOL_OP;}
 	YY_BREAK
 case 14:
 YY_RULE_SETUP
 #line 34 "lex.l"
-{printf("binary\n");if(!strcmp(yytext,"true")){ yylval.bval = 1;} else { yylval.bval = 0;} return BOOL;}
+{if(!strcmp(yytext,"true")){ yylval.bval = 1;} else { yylval.bval = 0;} return BOOL;}
 	YY_BREAK
 case 15:
 YY_RULE_SETUP
 #line 35 "lex.l"
-{printf("id\n");yylval.idval = strdup(yytext);return IDENTIFIER;}
+{yylval.idval = strdup(yytext);return IDENTIFIER;}
 	YY_BREAK
 case 16:
 YY_RULE_SETUP
 #line 36 "lex.l"
-{printf("semi col\n"); return SEMI_COLON;}
+{ return SEMI_COLON;}
 	YY_BREAK
 case 17:
 YY_RULE_SETUP
@@ -894,7 +894,7 @@ YY_RULE_SETUP
 case 21:
 YY_RULE_SETUP
 #line 41 "lex.l"
-{printf("rightCurly\n");return RIGHT_BRACKET_CURLY;}
+{return RIGHT_BRACKET_CURLY;}
 	YY_BREAK
 case 22:
 /* rule 22 can match eol */

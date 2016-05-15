@@ -4,18 +4,20 @@ public class test
 	{
 		int x;
 		int y = 5;
-		int z = 7;
-		int z1 = 8;
-		int b = 9;
-		int a = 11;
-		int n = 18;
+		int z = 130;
+		int z1 = 65536;
+		int b = -300;
+		int a = -11;
+		int n = 500;
+		float zz = 1.1f;
 		x = 6 + y;
-		if ( x == 5){
+		y = z % b;
+		if ( x == 5 || x == 6){
 			System.out.println(x);
 		}
 		else
 		{
-			System.out.println(n);
+			System.out.println(zz);
 		}
 	}
 
