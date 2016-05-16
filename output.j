@@ -1,3 +1,4 @@
+.source input_code.txt
 .class public test
 .super java/lang/Object
 
@@ -14,23 +15,10 @@ iconst_0
 istore 1
 fconst_0
 fstore 2
+.line 1
 iconst_0
 istore 3
-.line 2
-istore 3
-.line 3
-iload 3.line 4
-.line 5
-istore 3
-.line 6
-.line 7
-.line 8
-.line 9
-istore 3
-.line 10
-.line 11
-iload 3istore 1
-getstatic      java/lang/System/out Ljava/io/PrintStream;iload 1
-invokevirtual java/io/PrintStream/println(I)V
+retL:
 return
 .end method
+.line 2

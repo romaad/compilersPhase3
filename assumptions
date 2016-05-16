@@ -1,1 +1,2 @@
 - assignments of the same types only
+- no cond( true && expr ) | (true || expr)

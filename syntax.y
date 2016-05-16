@@ -2,9 +2,11 @@
 #include <fstream>
 #include <iostream>
 #include <map>
+#include <cstring>
 
 #include <stdio.h>
 #include <unistd.h>
+
 
 #include "bytecode_inst.h"
 
@@ -48,6 +50,7 @@ string getOp(string op);
 void defineVar(string name, int type);
 
 string genLabel();
+//char *strdup (const char *s) throw ();
 
 %}
 
@@ -111,6 +114,8 @@ string genLabel();
 %type <stmt_type> if
 %type <while_type> while
 
+%type <bexpr_type> b_expr_temp
+
 %% 
 method_body: 
 	{	generateHeader();
@@ -121,27 +126,33 @@ method_body:
 	;
 statement_list: 
 	{
-		$$.next = $<stmt_type>0.next;
-		$<stmt_type>$.next = $$.next;
+		$<stmt_type>$.next = $<stmt_type>0.next;
 	}
 	 statement 
-	| {
-		$$.next = $<stmt_type>0.next;
-		$<stmt_type>$.next = $$.next;
-	  }
-	  {
-	  	$<stmt_type>$.next = genLabel().c_str(); 	//generate label for statement and assign it to statement list next
-	  }
+	| 
+	{
+	  	$<stmt_type>$.next = strdup(genLabel().c_str()); 	//generate label for statement and assign it to statement list next
+	}
 	statement_list 
 	{
-		fout<<$2.next<<":"<<endl;	//mark statement with statement list next label
+		$<stmt_type>$.next = $<stmt_type>0.next;
+		fout<<$<stmt_type>1.next<<":"<<endl;	//mark statement with statement list next label
 	}
 	statement 
 	;
+
 statement: 
 	declaration
-	| if
-	| while
+	| 
+	{
+		$<stmt_type>$.next = $<stmt_type>0.next;
+	}
+	if
+	| 
+	{
+		$<stmt_type>$.next = $<stmt_type>0.next;
+	}
+	while
 	| assignment
 	| system_print
 	;
@@ -165,47 +176,56 @@ primitive_type:
 	;
 if: 
 	{
-		$4.nTrue = genLabel().c_str;
-		$4.nFalse = genLabel().c_str;
-		$8.next = $$.next;
-		$14.next = $$next;
+		$<stmt_type>$.next = $<stmt_type>0.next;
 	}
 	IF_WORD LEFT_BRACKET 
+	{
+		$<bexpr_type>$.nTrue = strdup(genLabel().c_str());
+		$<bexpr_type>$.nFalse = strdup(genLabel().c_str());
+	}
 	b_expression 
 	RIGHT_BRACKET LEFT_BRACKET_CURLY 
 	{
-		fout<<$4.nTrue<<":"<<endl;
+		fout<<$<bexpr_type>4.nTrue<<":"<<endl;
+		$<stmt_type>$.next = $<stmt_type>1.next;
 	}
 	statement 
 	{
-		fout<<"goto "<<$$.next<<endl;
+		fout<<"goto "<<$<stmt_type>1.next<<endl;
 	}
 	RIGHT_BRACKET_CURLY 
 	ELSE_WORD LEFT_BRACKET_CURLY 
 	{
-		fout<<$4.nFalse<<":"<<endl;
+		fout<<$<bexpr_type>4.nFalse<<":"<<endl;
+		$<stmt_type>$.next = $<stmt_type>1.next;
 	}
 	statement 
 	RIGHT_BRACKET_CURLY
+	{$$ = $<stmt_type>0;}
 	;
-while: 
+while:
+	{
+		$<while_type>$.next = $<stmt_type>0.next;
+		$<while_type>$.begin = strdup(genLabel().c_str());
+		fout<<$<while_type>$.begin<<":"<<endl;
+	} 
 	WHILE_WORD LEFT_BRACKET
 	{
-		$$.begin = genLabel().c_str();
-		$4.true = genLabel().c_str();
-		$4.false = $$.next;
-		$7.next = $$.next;
+		$<bexpr_type>$.nTrue = strdup(genLabel().c_str());
+		$<bexpr_type>$.nFalse = $<while_type>1.next;
 	}
 	b_expression
 	RIGHT_BRACKET LEFT_BRACKET_CURLY 
 	{
-		fout<<$4.true<<":"<<endl;
+		fout<<$<bexpr_type>4.nTrue<<":"<<endl;
+		$<stmt_type>$.next = $<stmt_type>1.next;
 	}
 	statement 
 	RIGHT_BRACKET_CURLY
 	{
-		fout<<"goto "<<$$.begin();
+		fout<<"goto "<<$<while_type>1.begin;
 	}
+	{$$ = $<while_type>1;}
 	;
 assignment: 
 	IDENTIFIER EQUALS expression SEMI_COLON
@@ -285,32 +305,56 @@ system_print:
 		}
 	}
 	;
-	b_expression:
-	BOOL 	{$$.sType = BOOL_T; fout<<"ldc "<<$1<<endl;}
-	| 
+b_expr_temp: {
+		string lab1 = genLabel(),lab2 = genLabel();
+		$$.nTrue = strdup(lab1.c_str());
+		$$.nFalse = strdup(lab2.c_str());
+	};
+b_expression:
+	BOOL
 	{
-		$<idval>$ = genLabel().c_str();
-		if(!strcmp($2, "&&"))
+		$$ = $<bexpr_type>0;
+		if($1)
 		{
-			$1.nTrue = $<idval>$;
-			$1.nFalse = $$.nFalse;
-			$3.nTrue = $$.nTrue;
-			$3.nFalse = $$.nFalse;
-		}
-		else if(! strcmp($2,"||"))
+			/* bool is 'true' */
+			fout<<"goto "<<$$.nTrue<<endl;
+		}else
 		{
-			$1.nTrue = $$.nTrue;
-			$`.nFalse = $<idval>$;
-			$3.nTrue = $$.nTrue;
-			$3.nFalse = $$.nFalse;
+			fout<<"goto "<<$$.nFalse<<endl;
 		}
 	}
-	b_expression 
-	BOOL_OP 
-	{fout<<$<idval>$<<":"<<endl;}
-	b_expression	
 	| expression RELA_OP expression		
-	{relaCast(string($2),$$.nTrue,$$.nFalse);}
+	{$$ = $<bexpr_type>0;relaCast(string($2),$$.nTrue,$$.nFalse);}
+	/*|expression RELA_OP BOOL 	// to be considered */ 
+
+	|b_expr_temp
+	b_expression
+	BOOL_OP 
+	{
+		$<bexpr_type>$ = $<bexpr_type>0;
+		if(!strcmp($3, "&&"))
+		{
+			fout<<$<bexpr_type>0.nTrue<<":"<<endl;
+		}
+		else if(! strcmp($3,"||"))
+		{
+			fout<<$<bexpr_type>0.nFalse<<":"<<endl;
+		}
+		$<bexpr_type>$.nTrue = $<bexpr_type>0.nTrue;
+		$<bexpr_type>$.nFalse = $<bexpr_type>0.nFalse;
+	}
+	b_expression
+	{
+		$$ = $<bexpr_type>0;
+		if(!strcmp($3, "&&"))
+		{
+			fout<<$<bexpr_type>1.nFalse<<": goto "<<$$.nFalse<<endl;	/* dummy jump to next expression */
+		}else if (!strcmp($3,"||"))
+		{
+			fout<<$<bexpr_type>1.nTrue<<": goto "<<$$.nTrue<<endl;
+		}
+	}	
+	
 	;
 %%
 
@@ -323,7 +367,7 @@ system_print:
 main (int argv, char * argc[])
 {
 	FILE *myfile;
-	if(argv > 1) 
+	if(argv == 1) 
 	{
 		myfile = fopen("input_code.txt", "r");
 		outfileName = "input_code.txt";
@@ -406,7 +450,7 @@ void arithCast(int from , int to, string op)
 void relaCast(string op,char * nTrue, char * nFalse)
 {
 	fout << getOp(op)<< " "<<nTrue<<endl;
-	fout << "goto "<<nFalse;
+	fout << "goto "<<nFalse<<endl;
 }
 string getOp(string op)
 {
@@ -444,5 +488,13 @@ void defineVar(string name, int type)
 
 string genLabel()
 {
-	return "#_"+to_string(labelsCount++);
+	return "L_"+to_string(labelsCount++);
 }
+/*
+char *strdup (const char *s) {
+    char *d = (char *) malloc (strlen (s) + 1);   // Space for length plus nul
+    if (d == NULL) return NULL;          // No memory
+    strcpy (d,s);                        // Copy the characters
+    return d;                            // Return the new string
+}
+*/

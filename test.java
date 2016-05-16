@@ -20,7 +20,7 @@ public class test
 			System.out.println(zz);
 		}
 
-		while(x<10)
+		while(true)
 		{
 			x++;
 		}
