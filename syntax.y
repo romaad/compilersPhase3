@@ -3,9 +3,11 @@
 #include <iostream>
 #include <map>
 #include <cstring>
+#include <vector>
 
 #include <stdio.h>
 #include <unistd.h>
+
 
 
 #include "bytecode_inst.h"
@@ -25,8 +27,8 @@ extern int lineCounter;
 string outfileName ;
 
 ofstream fout("output.j");	/* file for writing output */
-void generateHeader(void);	/* generate useless header for class to be able to compile the code*/
-void generateFooter(void);	/* generate useless header for class to be able to compile the code*/
+void generateHeader(void);	/* generate  header for class to be able to compile the code*/
+void generateFooter(void);	/* generate  footer for class to be able to compile the code*/
 
 int varaiblesNum = 1; 	/* new variable will be issued this number, java starts with 1, 0 is 'this' */
 int labelsCount = 0;	/* to generate labels */
@@ -36,10 +38,7 @@ typedef enum {INT_T, FLOAT_T, BOOL_T, VOID_T, ERROR_T} type_enum;
 map<string, pair<int,type_enum> > symbTab;
 
 
-void printLineNumber(int num)
-{
-	fout<<".line "<<num<<endl;
-}
+
 
 void cast (string x, int type_t1);
 void arithCast(int from , int to, string op);
@@ -50,9 +49,29 @@ string getOp(string op);
 void defineVar(string name, int type);
 
 string genLabel();
+string getLabel(int n);
 //char *strdup (const char *s) throw ();
 
+void backpatch(vector<int> *list, int num);
+vector<int> * merge (vector<int> *list1, vector<int>* list2);
+
+vector<string> codeList;
+void writeCode(string x);
+
+void printCode(void);
+void printLineNumber(int num)
+{
+	writeCode(".line "+ to_string(num));
+}
+
+
+
 %}
+
+%code requires {
+	#include <vector>
+	using namespace std;
+}
 
 %start method_body
 
@@ -66,16 +85,11 @@ string genLabel();
 		int sType;
 	} expr_type;
 	struct {
-		char * nTrue;
-		char * nFalse;
+		vector<int> *trueList, *falseList;//no need for next because every if has else
 	} bexpr_type;
 	struct {
-		char * next;
+		vector<int> *nextList;
 	} stmt_type;
-	struct {
-		char * next;
-		char * begin;
-	}while_type;
 	int sType;
 }
 
@@ -112,49 +126,44 @@ string genLabel();
 %type <stmt_type> statement
 %type <stmt_type> statement_list
 %type <stmt_type> if
-%type <while_type> while
+%type <stmt_type> while
 
-%type <bexpr_type> b_expr_temp
+%type <ival> marker
+
 
 %% 
 method_body: 
-	{	generateHeader();
-		$<stmt_type>$.next = "retL";
-	}
+	{	generateHeader();	}
 	statement_list
-	{generateFooter();}
+	marker
+	{
+		backpatch($2.nextList,$3);
+		generateFooter();
+	}
 	;
 statement_list: 
-	{
-		$<stmt_type>$.next = $<stmt_type>0.next;
-	}
 	 statement 
 	| 
-	{
-	  	$<stmt_type>$.next = strdup(genLabel().c_str()); 	//generate label for statement and assign it to statement list next
-	}
+	statement
+	marker
 	statement_list 
 	{
-		$<stmt_type>$.next = $<stmt_type>0.next;
-		fout<<$<stmt_type>1.next<<":"<<endl;	//mark statement with statement list next label
+		backpatch($1.nextList,$2);
+		$$.nextList = $3.nextList;
 	}
-	statement 
 	;
-
+marker:
+{
+	$$ = labelsCount;
+	writeCode(genLabel() + ":");
+}
+;
 statement: 
-	declaration
-	| 
-	{
-		$<stmt_type>$.next = $<stmt_type>0.next;
-	}
-	if
-	| 
-	{
-		$<stmt_type>$.next = $<stmt_type>0.next;
-	}
-	while
-	| assignment
-	| system_print
+	declaration {vector<int> * v = new vector<int>(); $$.nextList =v;}
+	|if {$$.nextList = $1.nextList;}
+	|while 	{$$.nextList = $1.nextList;}
+	| assignment {vector<int> * v = new vector<int>(); $$.nextList =v;}
+	| system_print {vector<int> * v = new vector<int>(); $$.nextList =v;}
 	;
 declaration: 
 	primitive_type IDENTIFIER SEMI_COLON /* implement multi-variable declaration */
@@ -175,57 +184,37 @@ primitive_type:
 	|BOOLEAN_WORD {$$ = BOOL_T;}
 	;
 if: 
-	{
-		$<stmt_type>$.next = $<stmt_type>0.next;
-	}
 	IF_WORD LEFT_BRACKET 
-	{
-		$<bexpr_type>$.nTrue = strdup(genLabel().c_str());
-		$<bexpr_type>$.nFalse = strdup(genLabel().c_str());
-	}
 	b_expression 
 	RIGHT_BRACKET LEFT_BRACKET_CURLY 
-	{
-		fout<<$<bexpr_type>4.nTrue<<":"<<endl;
-		$<stmt_type>$.next = $<stmt_type>1.next;
-	}
+	marker
 	statement 
-	{
-		fout<<"goto "<<$<stmt_type>1.next<<endl;
-	}
 	RIGHT_BRACKET_CURLY 
 	ELSE_WORD LEFT_BRACKET_CURLY 
-	{
-		fout<<$<bexpr_type>4.nFalse<<":"<<endl;
-		$<stmt_type>$.next = $<stmt_type>1.next;
-	}
+	marker
 	statement 
 	RIGHT_BRACKET_CURLY
-	{$$ = $<stmt_type>0;}
+	{
+		backpatch($3.trueList,$6);
+		backpatch($3.falseList,$11);
+		$$.nextList = merge($7.nextList, $12.nextList);
+	}
 	;
 while:
-	{
-		$<while_type>$.next = $<stmt_type>0.next;
-		$<while_type>$.begin = strdup(genLabel().c_str());
-		fout<<$<while_type>$.begin<<":"<<endl;
-	} 
+	marker 
 	WHILE_WORD LEFT_BRACKET
-	{
-		$<bexpr_type>$.nTrue = strdup(genLabel().c_str());
-		$<bexpr_type>$.nFalse = $<while_type>1.next;
-	}
 	b_expression
 	RIGHT_BRACKET LEFT_BRACKET_CURLY 
-	{
-		fout<<$<bexpr_type>4.nTrue<<":"<<endl;
-		$<stmt_type>$.next = $<stmt_type>1.next;
-	}
+	marker
 	statement 
 	RIGHT_BRACKET_CURLY
 	{
-		fout<<"goto "<<$<while_type>1.begin;
+		writeCode("goto " + getLabel($1));
+		
+		backpatch($8.nextList,$1);
+		backpatch($4.trueList,$7);
+		$$.nextList = $4.falseList;
 	}
-	{$$ = $<while_type>1;}
 	;
 assignment: 
 	IDENTIFIER EQUALS expression SEMI_COLON
@@ -239,10 +228,10 @@ assignment:
 			{
 				if($3.sType == INT_T)
 				{
-					fout<<"istore "<<symbTab[str].first<<endl;
+					writeCode("istore " + to_string(symbTab[str].first));
 				}else if ($3.sType == FLOAT_T)
 				{
-					fout<<"fstore "<<symbTab[str].first<<endl;
+					writeCode("fstore " + to_string(symbTab[str].first));
 				}
 			}
 			else
@@ -256,8 +245,8 @@ assignment:
 	}
 	;
 expression: 
-	FLOAT 	{$$.sType = FLOAT_T; fout<<"ldc "<<$1<<endl;}
-	| INT 	{$$.sType = INT_T;  fout<<"ldc "<<$1<<endl;} 
+	FLOAT 	{$$.sType = FLOAT_T; writeCode("ldc "+to_string($1));}
+	| INT 	{$$.sType = INT_T;  writeCode("ldc "+to_string($1));} 
 	| expression ARITH_OP expression	{arithCast($1.sType, $3.sType, string($2));}
 	| IDENTIFIER {
 		string str($1);
@@ -266,10 +255,10 @@ expression:
 			$$.sType = symbTab[str].second;
 			if(symbTab[str].second == INT_T)
 			{
-				fout<<"iload "<<symbTab[str].first<<endl;
+				writeCode("iload " + to_string(symbTab[str].first));
 			}else if (symbTab[str].second == FLOAT_T)
 			{
-				fout<<"fload "<<symbTab[str].first<<endl;
+				writeCode("fload " + to_string(symbTab[str].first));
 			}
 		}
 		else
@@ -287,74 +276,74 @@ system_print:
 		if($3.sType == INT_T)
 		{
 			/* expression is at top of stack now */
-			fout<<"istore "<< symbTab["1syso_int_var"].first << endl;
-			/* save it at the predefined temp syso var */
-			fout<<"getstatic      java/lang/System/out Ljava/io/PrintStream;";
-			/* call syso */
-			fout<<"iload "<< symbTab["1syso_int_var"].first << endl;
+			/* save it at the predefined temp syso var */			
+			writeCode("istore " + to_string(symbTab["1syso_int_var"].first));
+			/* call syso */			
+			writeCode("getstatic      java/lang/System/out Ljava/io/PrintStream;");
 			/*insert param*/
-			fout<<"invokevirtual java/io/PrintStream/println(I)V"<<endl;
+			writeCode("iload " + to_string(symbTab["1syso_int_var"].first ));
 			/*invoke syso*/
+			writeCode("invokevirtual java/io/PrintStream/println(I)V");
 
 		}else if ($3.sType == FLOAT_T)
 		{
-			fout<<"fstore "<< symbTab["1syso_float_var"].first << endl;
-			fout<<"getstatic      java/lang/System/out Ljava/io/PrintStream;";
-			fout<<"iload "<< symbTab["1syso_int_var"].first << endl;
-			fout<<"invokevirtual java/io/PrintStream/println(F)V"<<endl;
+			writeCode("fstore " + to_string(symbTab["1syso_float_var"].first));
+			/* call syso */			
+			writeCode("getstatic      java/lang/System/out Ljava/io/PrintStream;");
+			/*insert param*/
+			writeCode("iload " + to_string(symbTab["1syso_float_var"].first ));
+			/*invoke syso*/
+			writeCode("invokevirtual java/io/PrintStream/println(F)V");
 		}
 	}
 	;
-b_expr_temp: {
-		string lab1 = genLabel(),lab2 = genLabel();
-		$$.nTrue = strdup(lab1.c_str());
-		$$.nFalse = strdup(lab2.c_str());
-	};
 b_expression:
 	BOOL
 	{
-		$$ = $<bexpr_type>0;
 		if($1)
 		{
 			/* bool is 'true' */
-			fout<<"goto "<<$$.nTrue<<endl;
+			$$.trueList = new vector<int> ();
+			$$.trueList->push_back(codeList.size());
+			$$.falseList = new vector<int>();
+			writeCode("goto ");
 		}else
 		{
-			fout<<"goto "<<$$.nFalse<<endl;
+			$$.trueList = new vector<int> ();
+			$$.falseList= new vector<int>();
+			$$.falseList->push_back(codeList.size());
+			writeCode("goto ");
 		}
 	}
-	| expression RELA_OP expression		
-	{$$ = $<bexpr_type>0;relaCast(string($2),$$.nTrue,$$.nFalse);}
-	/*|expression RELA_OP BOOL 	// to be considered */ 
-
-	|b_expr_temp
-	b_expression
+	|b_expression
 	BOOL_OP 
-	{
-		$<bexpr_type>$ = $<bexpr_type>0;
-		if(!strcmp($3, "&&"))
-		{
-			fout<<$<bexpr_type>0.nTrue<<":"<<endl;
-		}
-		else if(! strcmp($3,"||"))
-		{
-			fout<<$<bexpr_type>0.nFalse<<":"<<endl;
-		}
-		$<bexpr_type>$.nTrue = $<bexpr_type>0.nTrue;
-		$<bexpr_type>$.nFalse = $<bexpr_type>0.nFalse;
-	}
+	marker
 	b_expression
 	{
-		$$ = $<bexpr_type>0;
-		if(!strcmp($3, "&&"))
+		if(!strcmp($2, "&&"))
 		{
-			fout<<$<bexpr_type>1.nFalse<<": goto "<<$$.nFalse<<endl;	/* dummy jump to next expression */
-		}else if (!strcmp($3,"||"))
+			backpatch($1.trueList, $3);
+			$$.trueList = $4.trueList;
+			$$.falseList = merge($1.falseList,$4.falseList);
+		}
+		else if (!strcmp($2,"||"))
 		{
-			fout<<$<bexpr_type>1.nTrue<<": goto "<<$$.nTrue<<endl;
+			backpatch($1.falseList,$3);
+			$$.trueList = merge($1.trueList, $4.trueList);
+			$$.falseList = $4.falseList;
 		}
 	}	
-	
+	| expression RELA_OP expression		
+	{
+		string op ($2);
+		$$.trueList = new vector<int>();
+		$$.trueList ->push_back (codeList.size());
+		$$.falseList = new vector<int>();
+		$$.falseList->push_back(codeList.size()+1);
+		writeCode(getOp(op)+ " ");
+		writeCode("goto ");
+	}
+	/*|expression RELA_OP BOOL 	// to be considered */ 
 	;
 %%
 
@@ -393,6 +382,7 @@ main (int argv, char * argc[])
 	yyin = myfile;
 	yyparse();
 	//getchar();
+	printCode();
 }
 
 void yyerror(const char * s)
@@ -402,25 +392,28 @@ void yyerror(const char * s)
 
 void generateHeader()
 {
-	fout<<".source "<<outfileName<<endl;
-	fout<<".class public test\n.super java/lang/Object"<<endl<<endl; //code for defining class
-	fout<<".method public <init>()V"<<endl<<"aload_0"<<endl<<"invokenonvirtual java/lang/Object/<init>()V"<<endl<<"return"<<endl<<".end method"<<endl<<endl;
-	fout<<".method public static main([java/lang/String)V"<<endl;
-	fout<<".limit locals 100\n.limit stack 100"<<endl;
+	writeCode(".source " + outfileName);
+	writeCode(".class public test\n.super java/lang/Object\n"); //code for defining class
+	writeCode(".method public <init>()V");
+	writeCode("aload_0");
+	writeCode("invokenonvirtual java/lang/Object/<init>()V");
+	writeCode("return");
+	writeCode(".end method\n");
+	writeCode(".method public static main([java/lang/String)V");
+	writeCode(".limit locals 100\n.limit stack 100");
 
 	/* generate temporal vars for syso*/
 	defineVar("1syso_int_var",INT_T);
 	defineVar("1syso_float_var",FLOAT_T);
 
 	/*generate line*/
-	fout<<".line 1"<<endl;
+	writeCode(".line 1");
 }
 
 void generateFooter()
 {
-	fout<<"retL:"<<endl;
-	fout<<"return"<<endl;
-	fout<<".end method"<<endl;
+	writeCode("return");
+	writeCode(".end method");
 }
 
 void cast (string str, int t1)
@@ -434,10 +427,10 @@ void arithCast(int from , int to, string op)
 	{
 		if(from == INT_T)
 		{
-			fout<<"i"<<getOp(op)<<endl;
+			writeCode("i" + getOp(op));
 		}else if (from == FLOAT_T)
 		{
-			fout<<"f"<<getOp(op)<<endl;
+			writeCode("f" + getOp(op));
 		}
 	}
 	else
@@ -446,12 +439,7 @@ void arithCast(int from , int to, string op)
 	}
 }
 
-/*"=="|"!="|">"|">="|"<"|"<="*/
-void relaCast(string op,char * nTrue, char * nFalse)
-{
-	fout << getOp(op)<< " "<<nTrue<<endl;
-	fout << "goto "<<nFalse<<endl;
-}
+
 string getOp(string op)
 {
 	if(inst_list.find(op) != inst_list.end())
@@ -476,11 +464,11 @@ void defineVar(string name, int type)
 	{
 		if(type == INT_T)
 		{
-			fout<<"iconst_0\nistore "<<varaiblesNum<<endl;
+			writeCode("iconst_0\nistore " + to_string(varaiblesNum));
 		}
 		else if ( type == FLOAT_T)
 		{
-			fout<<"fconst_0\nfstore "<<varaiblesNum<<endl;	
+			writeCode("fconst_0\nfstore " + to_string(varaiblesNum));
 		}
 		symbTab[name] = make_pair(varaiblesNum++,(type_enum)type);
 	}
@@ -489,6 +477,50 @@ void defineVar(string name, int type)
 string genLabel()
 {
 	return "L_"+to_string(labelsCount++);
+}
+
+string getLabel(int n)
+{
+	return "L_"+to_string(n);
+}
+
+vector<int> * merge(vector<int> *list1, vector<int> *list2)
+{
+	if(list1 && list2){
+		vector<int> *list = new vector<int> (*list1);
+		list->insert(list->end(), list2->begin(),list2->end());
+		return list;
+	}else if(list1)
+	{
+		return list1;
+	}else if (list2)
+	{
+		return list2;
+	}else
+	{
+		return new vector<int>();
+	}
+}
+void backpatch(vector<int> *lists, int ind)
+{
+	if(lists)
+	for(int i =0 ; i < lists->size() ; i++)
+	{
+		codeList[(*lists)[i]] = codeList[(*lists)[i]] + getLabel(ind);
+//		printf("%s\n",codeList[(*lists)[i]].c_str());
+	}
+}
+void writeCode(string x)
+{
+	codeList.push_back(x);
+}
+
+void printCode(void)
+{
+	for ( int i = 0 ; i < codeList.size() ; i++)
+	{
+		fout<<codeList[i]<<endl;
+	}
 }
 /*
 char *strdup (const char *s) {

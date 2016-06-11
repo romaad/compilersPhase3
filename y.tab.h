@@ -39,6 +39,13 @@
 #if YYDEBUG
 extern int yydebug;
 #endif
+/* "%code requires" blocks.  */
+#line 71 "syntax.y" /* yacc.c:1909  */
+
+	#include <vector>
+	using namespace std;
+
+#line 49 "y.tab.h" /* yacc.c:1909  */
 
 /* Token type.  */
 #ifndef YYTOKENTYPE
@@ -96,7 +103,7 @@ extern int yydebug;
 typedef union YYSTYPE YYSTYPE;
 union YYSTYPE
 {
-#line 59 "syntax.y" /* yacc.c:1909  */
+#line 78 "syntax.y" /* yacc.c:1909  */
 
 	int ival;
 	float fval;
@@ -107,19 +114,14 @@ union YYSTYPE
 		int sType;
 	} expr_type;
 	struct {
-		char * nTrue;
-		char * nFalse;
+		vector<int> *trueList, *falseList;//no need for next because every if has else
 	} bexpr_type;
 	struct {
-		char * next;
+		vector<int> *nextList;
 	} stmt_type;
-	struct {
-		char * next;
-		char * begin;
-	}while_type;
 	int sType;
 
-#line 123 "y.tab.h" /* yacc.c:1909  */
+#line 125 "y.tab.h" /* yacc.c:1909  */
 };
 # define YYSTYPE_IS_TRIVIAL 1
 # define YYSTYPE_IS_DECLARED 1
