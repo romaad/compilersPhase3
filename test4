@@ -16,6 +16,7 @@
 		x = 6 + y;
 		y = z % b;
 		if ( x == 5 || x >= 7 || x <= 7 || x > 7 || x < 7 || x != 7){
+			System.out.println(z1);
 			System.out.println(x);
 		}
 		else

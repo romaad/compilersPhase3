@@ -127,6 +127,7 @@ void printLineNumber(int num)
 %type <stmt_type> statement_list
 %type <stmt_type> if
 %type <stmt_type> while
+%type <stmt_type> for
 
 %type <ival> marker
 %type <ival> goto
@@ -163,6 +164,7 @@ statement:
 	declaration {vector<int> * v = new vector<int>(); $$.nextList =v;}
 	|if {$$.nextList = $1.nextList;}
 	|while 	{$$.nextList = $1.nextList;}
+	|for {$$.nextList = $1.nextList;}
 	| assignment {vector<int> * v = new vector<int>(); $$.nextList =v;}
 	| system_print {vector<int> * v = new vector<int>(); $$.nextList =v;}
 	;
@@ -223,6 +225,34 @@ while:
 		backpatch($8.nextList,$1);
 		backpatch($4.trueList,$7);
 		$$.nextList = $4.falseList;
+	}
+	;
+for:
+	FOR_WORD 
+	LEFT_BRACKET
+	assignment
+	marker
+	b_expression
+	SEMI_COLON
+	marker
+	assignment
+	goto
+	RIGHT_BRACKET
+	LEFT_BRACKET_CURLY
+	marker
+	statement_list
+	goto
+	RIGHT_BRACKET_CURLY
+	{
+		backpatch($5.trueList,$12);
+		vector<int> * v = new vector<int> ();
+		v->push_back($9);
+		backpatch(v,$4);
+		v = new vector<int>();
+		v->push_back($14);
+		backpatch(v,$7);
+		backpatch($13.nextList,$7);
+		$$.nextList = $5.falseList;
 	}
 	;
 assignment: 

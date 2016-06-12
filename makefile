@@ -14,7 +14,7 @@ error:
 	bison --verbose syntax.y
 
 custom_run: all
-	./a.out test5
+	./a.out test6
 	java -jar ./jasmin-1.1/jasmin.jar output.j
 	java test
 
