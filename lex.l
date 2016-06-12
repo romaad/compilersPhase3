@@ -26,9 +26,9 @@ binary "true"|"false"
 "int"	{return INT_WORD;}
 "float"	{return FLOAT_WORD;}
 "boolean" {return BOOLEAN_WORD;}
+{op}	{yylval.aopval = strdup(yytext); return ARITH_OP;}
 {num}	{yylval.ival = atoi(yytext); return INT;}
 {fnum}	{yylval.fval = atof(yytext); return FLOAT;}
-{op}	{yylval.aopval = strdup(yytext); return ARITH_OP;}
 {relop} {yylval.aopval = strdup(yytext); return RELA_OP;}
 {boolop} {yylval.aopval = strdup(yytext); return BOOL_OP;}
 {binary} {if(!strcmp(yytext,"true")){ yylval.bval = 1;} else { yylval.bval = 0;} return BOOL;}
