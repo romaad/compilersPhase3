@@ -300,7 +300,7 @@ system_print:
 			/* call syso */			
 			writeCode("getstatic      java/lang/System/out Ljava/io/PrintStream;");
 			/*insert param*/
-			writeCode("iload " + to_string(symbTab["1syso_float_var"].first ));
+			writeCode("fload " + to_string(symbTab["1syso_float_var"].first ));
 			/*invoke syso*/
 			writeCode("invokevirtual java/io/PrintStream/println(F)V");
 		}

@@ -1,2 +1,7 @@
 - assignments of the same types only
 - no cond( true && expr ) | (true || expr)
+
+//todo
+strings print
+++ operator
+assignment in declaration

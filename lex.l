@@ -11,8 +11,8 @@ letter  [a-zA-Z]
 digit [0-9]
 digits {digit}+
 id {letter}({letter}|{digit})*
-num {digits}
-fnum {digits}.{digits}("E"{digits}+)?
+num "-"?{digits}
+fnum "-"?{digits}.{digits}("E"{digits}+)?
 relop "=="|"!="|">"|">="|"<"|"<="
 boolop "&&"|"||"
 op "+"|"-"|"*"|"/"|"%"|"&"|"|"
