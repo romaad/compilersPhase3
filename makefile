@@ -13,11 +13,10 @@ java:
 error: 
 	bison --verbose syntax.y
 
-custom:
-	flex lex.l
-	bison -y -d syntax.y
-	echo "#include <vector> \nusing namespace std;" | cat - y.tab.h > temp && mv temp y.tab.h
-	g++ -std=c++11 lex.yy.c y.tab.c
+custom_run: all
+	./a.out test1
+	java -jar ./jasmin-1.1/jasmin.jar output.j
+	java test
 
 jasmine:
 	java -jar ./jasmin-1.1/jasmin.jar "$1"
@@ -25,4 +24,7 @@ jasmine:
 jasmine_temp:
 	java -jar ./jasmin-1.1/jasmin.jar output.j
 
-exec_jasm: exec jasmine_temp
+run:
+	java test
+
+exec_jasm: exec jasmine_temp run

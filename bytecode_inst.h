@@ -16,12 +16,12 @@ map<string,string> inst_list = {
 	{"%", "rem"},
 
 	/* relational op */
-	{"==", "ifcmpeq"},
-	{"<=", "ifcmple"},
-	{">=", "ifcmpge"},
-	{"!=", "ifcmpne"},
-	{">",  "ifcmpgt"},
-	{"<",  "ifcmplt"}
+	{"==", "if_icmpeq"},
+	{"<=", "if_icmple"},
+	{">=", "if_icmpge"},
+	{"!=", "if_icmpne"},
+	{">",  "if_icmpgt"},
+	{"<",  "if_icmplt"}
 };
 
 #endif

@@ -129,6 +129,7 @@ void printLineNumber(int num)
 %type <stmt_type> while
 
 %type <ival> marker
+%type <ival> goto
 
 
 %% 
@@ -183,21 +184,29 @@ primitive_type:
 	| FLOAT_WORD {$$ = FLOAT_T;}
 	|BOOLEAN_WORD {$$ = BOOL_T;}
 	;
+goto:
+{
+	$$ = codeList.size();
+	writeCode("goto ");
+}
+;
 if: 
 	IF_WORD LEFT_BRACKET 
 	b_expression 
 	RIGHT_BRACKET LEFT_BRACKET_CURLY 
 	marker
-	statement 
+	statement_list
+	goto 
 	RIGHT_BRACKET_CURLY 
 	ELSE_WORD LEFT_BRACKET_CURLY 
 	marker
-	statement 
+	statement_list 
 	RIGHT_BRACKET_CURLY
 	{
 		backpatch($3.trueList,$6);
-		backpatch($3.falseList,$11);
-		$$.nextList = merge($7.nextList, $12.nextList);
+		backpatch($3.falseList,$12);
+		$$.nextList = merge($7.nextList, $13.nextList);
+		$$.nextList->push_back($8);
 	}
 	;
 while:
@@ -206,7 +215,7 @@ while:
 	b_expression
 	RIGHT_BRACKET LEFT_BRACKET_CURLY 
 	marker
-	statement 
+	statement_list
 	RIGHT_BRACKET_CURLY
 	{
 		writeCode("goto " + getLabel($1));
@@ -363,8 +372,8 @@ main (int argv, char * argc[])
 	}
 	else 
 	{
-		myfile = fopen(argc[2], "r");
-		outfileName = string(argc[2]);
+		myfile = fopen(argc[1], "r");
+		outfileName = string(argc[1]);
 	}
 	if (!myfile) {
 		printf("I can't open input code file!\n");
@@ -399,7 +408,7 @@ void generateHeader()
 	writeCode("invokenonvirtual java/lang/Object/<init>()V");
 	writeCode("return");
 	writeCode(".end method\n");
-	writeCode(".method public static main([java/lang/String)V");
+	writeCode(".method public static main([Ljava/lang/String;)V");
 	writeCode(".limit locals 100\n.limit stack 100");
 
 	/* generate temporal vars for syso*/
